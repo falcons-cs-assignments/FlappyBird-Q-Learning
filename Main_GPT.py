@@ -1,3 +1,4 @@
+import threading
 from pathlib import Path
 from pygame import mixer, image
 from classes import *
@@ -32,7 +33,8 @@ class FlappyBirdGame:
             self.cur_path + '/assets/sprites/up.png',
             self.cur_path + '/assets/sprites/mid.png',
             self.cur_path + '/assets/sprites/down.png')
-        
+        ##################################################
+        self.frames_per_step = 10
         self.run()
 
     def run(self):
@@ -40,13 +42,14 @@ class FlappyBirdGame:
         glutInitWindowPosition(10, 10)
         glutInitWindowSize(SCREENWIDTH, SCREENHEIGHT)
         glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA)
-        window = glutCreateWindow(b"Flappy Bird")
+        self.window = glutCreateWindow(b"Flappy Bird")
 
         glutDisplayFunc(self.display)
-        glutTimerFunc(self.PERIOD, self.timer, 1)
+        # glutTimerFunc(self.PERIOD, self.timer, 1)
         glutKeyboardFunc(self.keyboard)
         glutSetKeyRepeat(GLUT_KEY_REPEAT_OFF)
         self.init()
+        self.frames(1000)
         glutMainLoop()
 
     def init(self):
@@ -240,10 +243,11 @@ class FlappyBirdGame:
         self.bird = Bird(self.TEXTURES["bird"], self.GRAVITY, self.ANGULAR_SPEED)
         self.base = Base(self.TEXTURES["base"], 0.1)
 
-    # ############################### game states ########################################################
+    # ###################### game states ########################################
 
     def welcome(self):
         self.show_welcome()
+        self.bird.fly_speed = 0
         self.bird.fly()
 
     def main_game(self):
@@ -322,7 +326,7 @@ class FlappyBirdGame:
         draw_rectangle_with_tex(50, 550, 420, 720, self.TEXTURES["msg"], 0.5)
         draw_rectangle_with_tex(0, SCREENWIDTH, 0, BASEY + 200, self.TEXTURES["start"], 0.2)
 
-    ######################################################################################################
+    #############################################################################
 
     def display(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -338,58 +342,58 @@ class FlappyBirdGame:
             self.game_over()
 
         glutSwapBuffers()
-    
-    # TODO:
-    # def get_state(self):
-    #     # Return the current state of the game
-    #     state = {
-    #         'bird_position': (self.bird.x, self.bird.y),
-    #         'bird_velocity': self.bird.velocity,
-    #         'pipe_positions': [(pipe.x, pipe.upper_y, pipe.lower_y) for pipe in self.pipes],
-    #         'score': self.SCORE,
-    #         'game_state': self.GAME_STATES[self.STATE_INDEX]
-    #     }
-    #     return state
-    #
-    # def step(self, action):
-    #     # Perform one step in the game
-    #     if action == "jump":
-    #         if self.STATE_INDEX == 1:
-    #             self.bird.velocity = self.JUMP_VELOCITY
-    #
-    #         elif self.STATE_INDEX == 0:
-    #             self.bird.reset()
-    #             self.bird.velocity = self.JUMP_VELOCITY
-    #             self.STATE_INDEX = next(self.STATE_SEQUENCE)
-    #
-    #         elif self.STATE_INDEX == 2:
-    #             self.pipes = [Pipe(argP)]
-    #             self.bird.reset()
-    #             self.SCORE = 0
-    #             self.STATE_INDEX = next(self.STATE_SEQUENCE)
-    #
-    #     self.display()
-    #     glutTimerFunc(self.PERIOD, self.timer, 1)
-    #
-    #     if self.STATE_INDEX == 0:
-    #         return self.get_state(), 0, False, {}
-    #
-    #     if self.STATE_INDEX == 1:
-    #         self.main_game()
-    #
-    #         if self.check_crash():
-    #             self.STATE_INDEX = next(self.STATE_SEQUENCE)
-    #             return self.get_state(), -1, True, {}
-    #
-    #         return self.get_state(), 0, False, {}
-    #
-    #     if self.STATE_INDEX == 2:
-    #         self.game_over()
-    #         return self.get_state(), 0, True, {}
 
-    def timer(self, t):
+    def reset(self):
+        self.pipes = [Pipe(self.TEXTURES["pipe"])]
+        self.bird.reset()
+        self.SCORE = 0
+        self.STATE_INDEX = 0
+
+    # TODO: Modify it
+    def get_state(self):
+        # Return the current state of the game
+        state = {
+            'bird_position': (self.bird.x, self.bird.y),
+            'bird_velocity': self.bird.velocity,
+            'pipe_positions': [(pipe.x, pipe.upper_y, pipe.lower_y) for pipe in self.pipes],
+            'score': self.SCORE,
+            'game_state': self.GAME_STATES[self.STATE_INDEX]
+        }
+        return state
+
+    def get_reward(self):
+        ...
+
+    def step(self, action):
+        # Perform one step in the game to go to the next state
+        if action == "jump":
+            if self.STATE_INDEX == 1:  # state is MAIN GAME, hence make the self.bird jump.
+                self.SOUNDS["jump"].play()
+                self.bird.velocity = self.JUMP_VELOCITY  # make self.bird go up
+
+            elif self.STATE_INDEX == 0:  # state is WELCOME.
+                self.SOUNDS["jump"].play()
+                self.bird.reset()
+                self.bird.velocity = self.JUMP_VELOCITY  # make self.bird go up
+                self.STATE_INDEX = next(self.STATE_SEQUENCE)
+
+        self.frames(10)
+
+        # get status of the next state to return it
+
+        # if self.STATE_INDEX == 0:
+        #     return self.get_state(), 0, False, {}
+
+        if self.STATE_INDEX == 1:  # The bird is still alive
+            return self.get_state(), self.get_reward(), False
+
+        if self.STATE_INDEX == 2:  # The bird died
+            return self.get_state(), self.get_reward(), True
+
+    def frames(self, t):
         self.display()
-        glutTimerFunc(self.PERIOD, self.timer, 1)
+        if t > 1:
+            glutTimerFunc(self.PERIOD, self.frames, t - 1)
 
     def keyboard(self, key, a, b):
         if key == b" ":
@@ -414,3 +418,11 @@ class FlappyBirdGame:
 
 
 env = FlappyBirdGame()
+# def run_flappy_bird():
+
+#
+# game_thread = threading.Thread(target=run_flappy_bird)
+# game_thread.start()
+print("hello")
+
+
