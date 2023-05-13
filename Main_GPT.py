@@ -2,6 +2,7 @@ import threading
 from pathlib import Path
 from pygame import mixer, image
 from classes import *
+from qlearn_agent import Q_learn
 
 
 class FlappyBirdGame:
@@ -35,6 +36,7 @@ class FlappyBirdGame:
             self.cur_path + '/assets/sprites/down.png')
         ##################################################
         self.frames_per_step = 10
+        self.agent = Q_learn()
         self.run()
 
     def run(self):
@@ -49,7 +51,7 @@ class FlappyBirdGame:
         glutKeyboardFunc(self.keyboard)
         glutSetKeyRepeat(GLUT_KEY_REPEAT_OFF)
         self.init()
-        self.frames(1000)
+        self.frames(1)
         glutMainLoop()
 
     def init(self):
@@ -352,17 +354,18 @@ class FlappyBirdGame:
     # TODO: Modify it
     def get_state(self):
         # Return the current state of the game
-        state = {
-            'bird_position': (self.bird.x, self.bird.y),
-            'bird_velocity': self.bird.velocity,
-            'pipe_positions': [(pipe.x, pipe.upper_y, pipe.lower_y) for pipe in self.pipes],
-            'score': self.SCORE,
-            'game_state': self.GAME_STATES[self.STATE_INDEX]
-        }
-        return state
+        # state = {
+        #     'bird_position': (self.bird.x, self.bird.y),
+        #     'bird_velocity': self.bird.velocity,
+        #     'pipe_positions': [(pipe.x, pipe.upper_y, pipe.lower_y) for pipe in self.pipes],
+        #     'score': self.SCORE,
+        #     'game_state': self.GAME_STATES[self.STATE_INDEX]
+        # }
+        # return state
+        pass
 
     def get_reward(self):
-        ...
+        pass
 
     def step(self, action):
         # Perform one step in the game to go to the next state
@@ -392,8 +395,30 @@ class FlappyBirdGame:
 
     def frames(self, t):
         self.display()
-        if t > 1:
-            glutTimerFunc(self.PERIOD, self.frames, t - 1)
+        if t == 0:  # agent will be called every specific number of frames = self.frames_per_step
+            t = self.agent_decide()
+        glutTimerFunc(self.PERIOD, self.frames, t - 1)
+
+    def agent_decide(self):
+        action = self.agent.act_and_learn(self.get_state(), self.get_reward())
+        if action == "jump":
+            if self.STATE_INDEX == 1:  # state is MAIN GAME, hence make the self.bird jump.
+                self.SOUNDS["jump"].play()
+                self.bird.velocity = self.JUMP_VELOCITY  # make self.bird go up
+
+            elif self.STATE_INDEX == 0:  # state is WELCOME.
+                self.SOUNDS["jump"].play()
+                self.bird.reset()
+                self.bird.velocity = self.JUMP_VELOCITY  # make self.bird go up
+                self.STATE_INDEX = next(self.STATE_SEQUENCE)
+
+            elif self.STATE_INDEX == 2:  # state is GAME OVER.
+                self.pipes = [Pipe(self.TEXTURES["pipe"])]
+                self.bird.reset()
+                self.SCORE = 0
+                self.STATE_INDEX = next(self.STATE_SEQUENCE)
+
+        return self.frames_per_step
 
     def keyboard(self, key, a, b):
         if key == b" ":
@@ -418,10 +443,6 @@ class FlappyBirdGame:
 
 
 env = FlappyBirdGame()
-# def run_flappy_bird():
 
-#
-# game_thread = threading.Thread(target=run_flappy_bird)
-# game_thread.start()
 print("hello")
 
