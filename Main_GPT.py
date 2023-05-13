@@ -354,15 +354,14 @@ class FlappyBirdGame:
     # TODO: Modify it
     def get_state(self):
         # Return the current state of the game
-        # state = {
-        #     'bird_position': (self.bird.x, self.bird.y),
-        #     'bird_velocity': self.bird.velocity,
-        #     'pipe_positions': [(pipe.x, pipe.upper_y, pipe.lower_y) for pipe in self.pipes],
-        #     'score': self.SCORE,
-        #     'game_state': self.GAME_STATES[self.STATE_INDEX]
-        # }
-        # return state
-        pass
+        state = {
+            'bird_position': (self.bird.x, self.bird.y),
+            'bird_velocity': self.bird.velocity,
+            'pipe_positions': [(pipe.x, pipe.upper_y, pipe.lower_y) for pipe in self.pipes],
+            'score': self.SCORE,
+            'game_state': self.GAME_STATES[self.STATE_INDEX]
+        }
+        return state
 
     def get_reward(self):
         pass

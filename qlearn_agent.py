@@ -4,18 +4,18 @@ import numpy as np
 
 class Q_learn:
     def __init__(self):
-        # self.state = None
-        # self.previous_state = None
-        # self.action = None
-        # # Initialize Q-table
-        # self.num_states = ...
-        # self.num_actions = ...
-        # self.Q = np.zeros((self.num_states, self.num_actions))
-        #
-        # # Set hyper parameters
-        # self.alpha = ...
-        # self.gamma = ...
-        # self.num_episodes = ...
+        self.state = None
+        self.previous_state = None
+        self.action = None
+        # Initialize Q-table
+        self.num_states = ...
+        self.num_actions = ...
+        self.Q = np.zeros((self.num_states, self.num_actions))
+
+        # Set hyper parameters
+        self.alpha = ...
+        self.gamma = ...
+        self.num_episodes = ...
 
         # Define epsilon (the exploration rate)
         self.epsilon = 0.1
@@ -34,20 +34,16 @@ class Q_learn:
 
     # Q-learning algorithm
     def act_and_learn(self, state, reward):
-        # self.previous_state = self.state
-        # self.state = state
-        #
-        # # Update Q-value for previous state-action pair
-        # td_error = reward + self.gamma * np.max(self.Q[self.state]) - self.Q[self.previous_state][self.action]
-        # self.Q[self.previous_state][self.action] += self.alpha * td_error
-        #
-        # # Choose action using epsilon-greedy policy and wait response in the next iteration
-        # self.action = self.epsilon_greedy(self.state)
-        # return self.action
-        if random.randint(0, 5) == 0:
-            return "jump"
-        else:
-            return " "
+        self.previous_state = self.state
+        self.state = state
+
+        # Update Q-value for previous state-action pair
+        td_error = reward + self.gamma * np.max(self.Q[self.state]) - self.Q[self.previous_state][self.action]
+        self.Q[self.previous_state][self.action] += self.alpha * td_error
+
+        # Choose action using epsilon-greedy policy and wait response in the next iteration
+        self.action = self.epsilon_greedy(self.state)
+        return self.action
 
     def play(self, state):
         # Choose action using epsilon-greedy policy and wait response in the next iteration
