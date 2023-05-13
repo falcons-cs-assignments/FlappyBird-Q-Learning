@@ -460,7 +460,7 @@ for episode in range(10):
     env.reset()
     done = False
     while not done:
-        # Choose action using epsilon-greedy policy
+        # Choose random action
         action = random.randint(0, 1)
         if action:
             done = env.step2("jump")
