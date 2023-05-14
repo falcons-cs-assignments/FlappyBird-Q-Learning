@@ -418,10 +418,5 @@ class FlappyBirdGame:
 
 
 env = FlappyBirdGame()
-# def run_flappy_bird():
 
-#
-# game_thread = threading.Thread(target=run_flappy_bird)
-# game_thread.start()
 print("hello")
-
