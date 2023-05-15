@@ -7,16 +7,16 @@ class Q_learn:
         self.init_state = self.state_index_map(state)
         self.state = self.init_state
         self.next_state = None
-        self.action = None
+        self.action = "jump"
         # Initialize Q-table
         self.num_states = ...
-        self.num_actions = ...
+        self.num_actions = 2
         self.Q = np.zeros((self.num_states, self.num_actions))
 
         # Set hyper parameters
-        self.alpha = ...
-        self.gamma = ...
-        self.num_episodes = ...
+        self.alpha = 0.1
+        self.gamma = 0.01
+        self.num_episodes = 0
 
         # Define epsilon (the exploration rate)
         self.epsilon = 0.1
@@ -42,8 +42,13 @@ class Q_learn:
             action = random.choice(actions)
         return action
 
-    def take_action(self, state):
-        self.action = self.epsilon_greedy(state)
+    def take_action(self, state, exploration=True):
+        if exploration:  # True during learning
+            self.action = self.epsilon_greedy(state)
+        else:
+            max_value = max(self.Q[state].values())
+            actions = [a for a, v in self.Q[state].items() if v == max_value]
+            self.action = random.choice(actions)
         return self.action
 
     # Q-learning algorithm
@@ -56,9 +61,9 @@ class Q_learn:
         # update state
         self.state = self.next_state
 
-    def play(self, state):
-        # Choose action using epsilon-greedy policy and wait response in the next iteration
-        max_value = max(self.Q[state].values())
-        actions = [a for a, v in self.Q[state].items() if v == max_value]
-        self.action = random.choice(actions)
-        return self.action
+        # when episode ends reset the agent
+        if done:
+            self.reset()
+            # print number of complete episodes
+            print(self.num_episodes)
+            self.num_episodes += 1

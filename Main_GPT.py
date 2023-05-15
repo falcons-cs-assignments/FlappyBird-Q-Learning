@@ -16,7 +16,7 @@ class FlappyBirdGame:
         ################################################
         self.DISTANCE = SCREENWIDTH / 2  # distance between pipes
         self.SCORE = 0
-        self.BP_SPEED = -3
+        self.BP_SPEED = -5
         # ######## bird's control ########################
         self.ANGULAR_SPEED = 3
         # control bird jump.
@@ -347,7 +347,6 @@ class FlappyBirdGame:
             self.welcome()
             # start the game automatically
             if self.counter == 0:
-                self.agent.reset()  # reset agent for new episode
                 self.SOUNDS["jump"].play()
                 self.bird.reset()
                 self.bird.velocity = self.JUMP_VELOCITY  # make self.bird go up
@@ -356,12 +355,13 @@ class FlappyBirdGame:
                 self.counter = self.frames_per_step
 
         elif self.GAME_STATES[self.STATE_INDEX] == "main":
-            self.main_game()
             # agent take decision
             if self.counter == 0:
                 state = self.get_state()
                 self.agent.learn(state, self.get_reward())
                 self.counter = self.agent_decide(state)
+
+            self.main_game()
 
         elif self.GAME_STATES[self.STATE_INDEX] == "over":
             self.game_over()
@@ -388,6 +388,8 @@ class FlappyBirdGame:
 
     # TODO: Modify it
     def get_reward(self):
+        self.get_state()
+        
         pass
 
     def agent_decide(self, state):
@@ -396,18 +398,6 @@ class FlappyBirdGame:
             if self.STATE_INDEX == 1:  # state is MAIN GAME, hence make the self.bird jump.
                 self.SOUNDS["jump"].play()
                 self.bird.velocity = self.JUMP_VELOCITY  # make self.bird go up
-
-            elif self.STATE_INDEX == 0:  # state is WELCOME.
-                self.SOUNDS["jump"].play()
-                self.bird.reset()
-                self.bird.velocity = self.JUMP_VELOCITY  # make self.bird go up
-                self.STATE_INDEX = next(self.STATE_SEQUENCE)
-
-            elif self.STATE_INDEX == 2:  # state is GAME OVER.
-                self.pipes = [Pipe(self.TEXTURES["pipe"])]
-                self.bird.reset()
-                self.SCORE = 0
-                self.STATE_INDEX = next(self.STATE_SEQUENCE)
 
         return self.frames_per_step
 
