@@ -231,6 +231,8 @@ def init_objects():
 
 def timer(t):
     display()
+    if STATE_INDEX != 2:
+        print(bird.velocity)
     glutTimerFunc(PERIOD, timer, 1)
 
 
@@ -315,8 +317,8 @@ def update_pipes():
 def update_score():
     global SCORE
     pipe = pipes[0]
-    # increase score if bird crossed the pipe's centre
-    if not pipe.count and pipe.right - (pipe.width / 2) <= bird.right:
+    # increase score if bird crossed the pipe's right
+    if not pipe.count and pipe.right <= bird.left:
         SCORE += 1
         SOUNDS["point"].play()
         pipe.count = True

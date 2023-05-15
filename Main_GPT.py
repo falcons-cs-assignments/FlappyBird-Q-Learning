@@ -35,8 +35,11 @@ class FlappyBirdGame:
             self.cur_path + '/assets/sprites/mid.png',
             self.cur_path + '/assets/sprites/down.png')
         ##################################################
-        self.frames_per_step = 10
-        self.agent = Q_learn()
+        self.frames_per_step = 10  # number of frames after it the agent will take a decision
+        self.counter = self.frames_per_step  # counter down to accumulate the number of frames
+        self.agent = None
+        self.next_pipe = None  # the pipe that the bird should focus on
+
         self.run()
 
     def run(self):
@@ -242,8 +245,10 @@ class FlappyBirdGame:
 
     def init_objects(self):
         self.pipes.append(Pipe(self.TEXTURES["pipe"]))
+        self.next_pipe = self.pipes[0]
         self.bird = Bird(self.TEXTURES["bird"], self.GRAVITY, self.ANGULAR_SPEED)
         self.base = Base(self.TEXTURES["base"], 0.1)
+        self.agent = Q_learn(self.get_state())
 
     # ###################### game states ########################################
 
@@ -267,11 +272,8 @@ class FlappyBirdGame:
             self.STATE_INDEX = next(self.STATE_SEQUENCE)
 
     def game_over(self):
-        for pipe in self.pipes:
-            pipe.draw()
-        self.bird.die()
-        self.show_score(str(self.SCORE))
-        self.show_game_over()
+        self.agent.learn(self.get_state(), self.get_reward(), done=True)
+        self.reset()
 
     # #################### assistant Methods ##################################
     def check_crash(self):
@@ -295,11 +297,12 @@ class FlappyBirdGame:
 
     def update_score(self):
         pipe = self.pipes[0]
-        # increase score if self.bird crossed the pipe's centre
-        if not pipe.count and pipe.right - (pipe.width / 2) <= self.bird.right:
+        # increase score if all bird's body crossed the pipe's right
+        if not pipe.count and pipe.right <= self.bird.left:
             self.SCORE += 1
             self.SOUNDS["point"].play()
             pipe.count = True
+            self.next_pipe = self.pipes[1]  # make the agent focus on the next pipe
 
     def show_score(self, score):
         """
@@ -329,6 +332,10 @@ class FlappyBirdGame:
         draw_rectangle_with_tex(0, SCREENWIDTH, 0, BASEY + 200, self.TEXTURES["start"], 0.2)
 
     #############################################################################
+    def frames(self, t=1):
+        self.display()
+        self.counter -= 1
+        glutTimerFunc(self.PERIOD, self.frames, t)
 
     def display(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -338,8 +345,24 @@ class FlappyBirdGame:
 
         if self.GAME_STATES[self.STATE_INDEX] == "welcome":
             self.welcome()
+            # start the game automatically
+            if self.counter == 0:
+                self.agent.reset()  # reset agent for new episode
+                self.SOUNDS["jump"].play()
+                self.bird.reset()
+                self.bird.velocity = self.JUMP_VELOCITY  # make self.bird go up
+                self.STATE_INDEX = next(self.STATE_SEQUENCE)
+
+                self.counter = self.frames_per_step
+
         elif self.GAME_STATES[self.STATE_INDEX] == "main":
             self.main_game()
+            # agent take decision
+            if self.counter == 0:
+                state = self.get_state()
+                self.agent.learn(state, self.get_reward())
+                self.counter = self.agent_decide(state)
+
         elif self.GAME_STATES[self.STATE_INDEX] == "over":
             self.game_over()
 
@@ -350,56 +373,25 @@ class FlappyBirdGame:
         self.bird.reset()
         self.SCORE = 0
         self.STATE_INDEX = 0
+        self.counter = self.frames_per_step
 
-    # TODO: Modify it
     def get_state(self):
         # Return the current state of the game
         state = {
-            'bird_position': (self.bird.x, self.bird.y),
-            'bird_velocity': self.bird.velocity,
-            'pipe_positions': [(pipe.x, pipe.upper_y, pipe.lower_y) for pipe in self.pipes],
+            'bird_y': (self.bird.bottom + self.bird.top) / 2,  # centre of the bird
+            'bird_v': self.bird.velocity,
+            'pipe_positions': (self.next_pipe.left + self.next_pipe.width * 0.5, self.next_pipe.gap_y),
             'score': self.SCORE,
             'game_state': self.GAME_STATES[self.STATE_INDEX]
         }
         return state
 
+    # TODO: Modify it
     def get_reward(self):
         pass
 
-    def step(self, action):
-        # Perform one step in the game to go to the next state
-        if action == "jump":
-            if self.STATE_INDEX == 1:  # state is MAIN GAME, hence make the self.bird jump.
-                self.SOUNDS["jump"].play()
-                self.bird.velocity = self.JUMP_VELOCITY  # make self.bird go up
-
-            elif self.STATE_INDEX == 0:  # state is WELCOME.
-                self.SOUNDS["jump"].play()
-                self.bird.reset()
-                self.bird.velocity = self.JUMP_VELOCITY  # make self.bird go up
-                self.STATE_INDEX = next(self.STATE_SEQUENCE)
-
-        self.frames(10)
-
-        # get status of the next state to return it
-
-        # if self.STATE_INDEX == 0:
-        #     return self.get_state(), 0, False, {}
-
-        if self.STATE_INDEX == 1:  # The bird is still alive
-            return self.get_state(), self.get_reward(), False
-
-        if self.STATE_INDEX == 2:  # The bird died
-            return self.get_state(), self.get_reward(), True
-
-    def frames(self, t):
-        self.display()
-        if t == 0:  # agent will be called every specific number of frames = self.frames_per_step
-            t = self.agent_decide()
-        glutTimerFunc(self.PERIOD, self.frames, t - 1)
-
-    def agent_decide(self):
-        action = self.agent.act_and_learn(self.get_state(), self.get_reward())
+    def agent_decide(self, state):
+        action = self.agent.take_action(state)
         if action == "jump":
             if self.STATE_INDEX == 1:  # state is MAIN GAME, hence make the self.bird jump.
                 self.SOUNDS["jump"].play()

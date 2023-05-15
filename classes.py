@@ -58,7 +58,7 @@ class Pipe:
 
 
 class Bird:
-    def __init__(self, tex, gravity=0.2, angular_s=0.5):
+    def __init__(self, tex, gravity=-0.2, angular_s=0.5):
         # shape attributes
         self.height = 40
         self.width = 1.3 * self.height   # width is longer than height
