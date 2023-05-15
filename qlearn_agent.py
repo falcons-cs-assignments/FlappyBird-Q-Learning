@@ -26,6 +26,28 @@ class Q_learn:
         self.action = "jump"
 
     def state_index_map(self, state):
+        # Todo: convert continuous state to a discrete index
+        # Todo: Take into your account that ... There is a special state at the start of the game "pipe_x variable is at the very right"
+        """
+        # input form:
+        state = {
+            'bird_y':
+            'bird_v':
+            'pipe_positions':
+            'score':
+            'game_state':
+        }
+
+        # ranges of important variables of the state:
+        state = {
+            'bird_y': [144:720]     bucket_size: 10
+            'bird_v': [-15:+5]      index: '0' or '1' for 'up' or 'down'
+            'pipe_positions': (
+                                pipe.gap_x: [93:393]        bucket_size: 20
+                                pipe.gap_y: [314:550]       bucket_size: 10
+                              )
+        }
+        """
         index = ...
         return index
         pass
