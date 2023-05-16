@@ -2,9 +2,57 @@ import random
 import numpy as np
 
 
+def mapping(sample, start, bucket_size):
+    index = (sample - start) // bucket_size
+    return int(index)
+
+
+def map_state_to_index(state):
+    # Todo: convert continuous state to a discrete index
+    # Todo: Take into your account that ... There is a special state at the start of the game "pipe_x variable is at the very right"
+    """
+    # input form:
+    state = {
+        'bird_y':
+        'bird_v':
+        'pipe_positions':
+        'score':
+        'game_state':
+    }
+
+    # ranges of important variables of the state:
+    state = {
+        'bird_y': [144:720]     bucket_size: 10
+        'bird_v': [-15:+5]      index: '0' or '1' for 'up' or 'down'
+        'pipe_positions': (
+                            pipe.gap_x: [93:393]        bucket_size: 20
+                            pipe.gap_y: [314:550]       bucket_size: 10
+                          )
+    }
+    """
+    bird_y = mapping(state['bird_y'], 144, 10)
+
+    bird_v = 1
+    if state['bird_v'] < 0:
+        bird_v = 0
+
+    pipe_x = mapping(state['pipe_positions'][0], 93, 20)
+    pipe_x = pipe_x if pipe_x <= 15 else 15
+    pipe_y = mapping(state['pipe_positions'][1], 314, 10)
+
+    indexes = (
+        bird_y,
+        bird_v,
+        pipe_x,
+        pipe_y
+    )
+
+    return indexes  # It's a tuple to be used in indexing a np array
+
+
 class Q_learn:
     def __init__(self, state):
-        self.init_state_index = self.state_index_map(state)
+        self.init_state_index = map_state_to_index(state)
         self.state_index = self.init_state_index
         self.next_state_index = None
         self.action_index = 1
@@ -29,32 +77,8 @@ class Q_learn:
         self.state_index = self.init_state_index
         self.action_index = 1
 
-    def state_index_map(self, state):
-        # Todo: convert continuous state to a discrete index
-        # Todo: Take into your account that ... There is a special state at the start of the game "pipe_x variable is at the very right"
-        """
-        # input form:
-        state = {
-            'bird_y':
-            'bird_v':
-            'pipe_positions':
-            'score':
-            'game_state':
-        }
-
-        # ranges of important variables of the state:
-        state = {
-            'bird_y': [144:720]     bucket_size: 10
-            'bird_v': [-15:+5]      index: '0' or '1' for 'up' or 'down'
-            'pipe_positions': (
-                                pipe.gap_x: [93:393]        bucket_size: 20
-                                pipe.gap_y: [314:550]       bucket_size: 10
-                              )
-        }
-        """
-
-        state_index = ()  # It's a tuple to be used in indexing a np array
-        return state_index
+    START_RANGES = [144, 93, 314]
+    BUCKET_SIZES = [10, 20]
 
     # Define a function to select an action using epsilon-greedy strategy
     def epsilon_greedy(self, state_index):
@@ -64,7 +88,7 @@ class Q_learn:
         # Otherwise, choose the action with the highest Q-value
         else:
             max_value = max(self.Q[state_index])
-            actions_indices = [i for i, v in self.Q[state_index] if v == max_value]
+            actions_indices = [i for i, v in enumerate(self.Q[state_index]) if v == max_value]
             action_index = random.choice(actions_indices)
 
         self.action_index = action_index
@@ -75,7 +99,7 @@ class Q_learn:
         It maps "action_index = 1" to "jump"
         and "action_index = 0" to " " meaning no jump
         """
-        state_index = self.state_index_map(state)
+        state_index = map_state_to_index(state)
         if exploration:  # True during learning
             action = "jump" if self.epsilon_greedy(state_index) else " "
         else:
@@ -87,7 +111,7 @@ class Q_learn:
 
     # Q-learning algorithm
     def learn(self, state, reward, done=False):
-        self.next_state_index = self.state_index_map(state)
+        self.next_state_index = map_state_to_index(state)
         # Update Q-value for state-action pair
         td_error = reward + self.gamma * np.max(self.Q[self.next_state_index]) - self.Q[self.state_index + (self.action_index,)]
         self.Q[self.state_index + (self.action_index,)] += self.alpha * td_error

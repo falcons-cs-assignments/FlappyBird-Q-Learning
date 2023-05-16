@@ -403,7 +403,7 @@ class FlappyBirdGame:
             reward += 100
 
         bird_centre = state['bird_y']
-        gap_x = state['pip_positions'][0] - self.next_pipe.width
+        gap_x = state['pipe_positions'][0] - self.next_pipe.width
         gap_top = self.next_pipe.upper_y
         gap_down = self.next_pipe.lower_y
         bird_height = self.bird.height
