@@ -4,14 +4,18 @@ import numpy as np
 
 class Q_learn:
     def __init__(self, state):
-        self.init_state = self.state_index_map(state)
-        self.state = self.init_state
-        self.next_state = None
+        self.init_state_index = self.state_index_map(state)
+        self.state_index = self.init_state_index
+        self.next_state_index = None
         self.action = "jump"
         # Initialize Q-table
-        self.num_states = ...
-        self.num_actions = 2
-        self.Q = np.zeros((self.num_states, self.num_actions))
+        self.num_states = (58,  # buckets num of bird_y
+                           2,   # buckets num of bird_velocity
+                           16,  # buckets num of gap_x
+                           24   # buckets num of gap_y
+                           )
+        self.num_actions = (2,)  # It's a tuple
+        self.Q = np.zeros(self.num_states + self.num_actions)
 
         # Set hyper parameters
         self.alpha = 0.1
@@ -22,7 +26,7 @@ class Q_learn:
         self.epsilon = 0.1
 
     def reset(self):
-        self.state = self.init_state
+        self.state_index = self.init_state_index
         self.action = "jump"
 
     def state_index_map(self, state):
@@ -48,7 +52,10 @@ class Q_learn:
                               )
         }
         """
-        index = ...
+
+        state_index = {
+
+        }
         return index
         pass
 
@@ -75,13 +82,13 @@ class Q_learn:
 
     # Q-learning algorithm
     def learn(self, state, reward, done=False):
-        self.next_state = state
+        self.next_state_index = self.state_index_map(state)
         # Update Q-value for state-action pair
-        td_error = reward + self.gamma * np.max(self.Q[self.next_state]) - self.Q[self.state][self.action]
-        self.Q[self.state][self.action] += self.alpha * td_error
+        td_error = reward + self.gamma * np.max(self.Q[self.next_state_index]) - self.Q[self.state_index][self.action]
+        self.Q[self.state_index][self.action] += self.alpha * td_error
 
         # update state
-        self.state = self.next_state
+        self.state_index = self.next_state_index
 
         # when episode ends reset the agent
         if done:
