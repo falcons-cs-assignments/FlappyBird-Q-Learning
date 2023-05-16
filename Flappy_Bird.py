@@ -1,4 +1,3 @@
-import threading
 from pathlib import Path
 from pygame import mixer, image
 from classes import *
@@ -6,6 +5,8 @@ from qlearn_agent import Q_learn
 
 
 class FlappyBirdGame:
+    next_pipe: Pipe
+
     def __init__(self):
         self.cur_path = str(Path(__file__).parent.resolve())
         self.PERIOD = 10
@@ -16,6 +17,7 @@ class FlappyBirdGame:
         ################################################
         self.DISTANCE = SCREENWIDTH / 2  # distance between pipes
         self.SCORE = 0
+        self.previous_score = 0
         self.BP_SPEED = -5
         # ######## bird's control ########################
         self.ANGULAR_SPEED = 3
@@ -380,17 +382,47 @@ class FlappyBirdGame:
         state = {
             'bird_y': (self.bird.bottom + self.bird.top) / 2,  # centre of the bird
             'bird_v': self.bird.velocity,
+            # Todo: make pipe_positions: (horizontal distance between bird and pipe, gap_y)
             'pipe_positions': (self.next_pipe.left + self.next_pipe.width * 0.5, self.next_pipe.gap_y),
             'score': self.SCORE,
             'game_state': self.GAME_STATES[self.STATE_INDEX]
         }
         return state
 
-    # TODO: Modify it
     def get_reward(self):
-        self.get_state()
-        
-        pass
+        state = self.get_state()
+
+        # if crashed ...........................
+        if state['game_state'] == 'over':
+            return -100
+
+        # if it didn't crash ...................
+        reward = 0
+        # score bonus
+        if self.SCORE > self.previous_score:
+            reward += 100
+
+        bird_centre = state['bird_y']
+        gap_x = state['pip_positions'][0] - self.next_pipe.width
+        gap_top = self.next_pipe.upper_y
+        gap_down = self.next_pipe.lower_y
+        bird_height = self.bird.height
+
+        # encourage the bird to be inside the scope of the gap
+        if gap_down + bird_height <= bird_centre <= gap_top - bird_height:  # within the gap exactly
+            reward += 10
+        elif bird_centre < gap_down + bird_height:  # scope within 45deg lower than the gap
+            pipe_bird_distance_x = gap_x - self.bird.right
+            pipe_bird_distance_y = gap_down - bird_centre
+            if pipe_bird_distance_y < pipe_bird_distance_x:
+                reward += 2
+        elif bird_centre > gap_down - bird_height:  # scope within 45deg higher than the gap
+            pipe_bird_distance_x = gap_x - self.bird.right
+            pipe_bird_distance_y = bird_centre - gap_top
+            if pipe_bird_distance_y < pipe_bird_distance_x:
+                reward += 2
+
+        return reward
 
     def agent_decide(self, state):
         action = self.agent.take_action(state)
@@ -426,4 +458,3 @@ class FlappyBirdGame:
 env = FlappyBirdGame()
 
 print("hello")
-
