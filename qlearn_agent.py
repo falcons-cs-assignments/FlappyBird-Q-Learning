@@ -63,9 +63,12 @@ class Q_learn:
                            24   # num of gap_y buckets
                            )
         self.num_actions = (2,)  # It's a tuple
-        self.Q = np.zeros(self.num_states + self.num_actions)
+        try:
+            self.Q = np.load("./q_learn.npy")
+        except FileNotFoundError:
+            self.Q = np.zeros(self.num_states + self.num_actions)
 
-        # Set hyper parameters
+    # Set hyper parameters
         self.alpha = 0.1
         self.gamma = 0.01
         self.num_episodes = 0
@@ -125,3 +128,7 @@ class Q_learn:
             # print number of complete episodes
             print(self.num_episodes)
             self.num_episodes += 1
+
+            # save Q_table each 20 episodes
+            if self.num_episodes % 20 == 0:
+                np.save("./q_table.npy", self.Q, allow_pickle=True)
