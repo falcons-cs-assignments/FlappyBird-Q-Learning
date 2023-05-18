@@ -413,6 +413,7 @@ class FlappyBirdGame:
         data.to_csv(csv_file, mode="a", index=False, header=not file_exists)
 
         self.pipes = [Pipe(self.TEXTURES["pipe"])]
+        self.next_pipe = self.pipes[0]
         self.bird.reset()
         self.SCORE = 0
         self.STATE_INDEX = 0
