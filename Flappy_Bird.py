@@ -2,6 +2,26 @@ from pathlib import Path
 from pygame import mixer, image
 from classes import *
 from qlearn_agent import QLearn
+import matplotlib.pyplot as plt
+import os
+import pandas as pd
+
+
+csv_file = "data.csv"
+
+
+def plot():
+    data = pd.read_csv(csv_file)
+    episode_data = data["episode"].to_list()
+    score_data = data["score"].to_list()
+    plt.scatter(episode_data, score_data)
+    plt.xlabel("Number of Episodes")
+    plt.ylabel("SCORE")
+    plt.title("Flappy Bird")
+    plt.show()
+    # TODO: print the accuracy
+    accuracy = ...
+    print(accuracy)
 
 
 class FlappyBirdGame:
@@ -19,10 +39,11 @@ class FlappyBirdGame:
         self.SCORE = 0
         self.previous_score = 0
         try:
-            with open("score.txt") as data:
-                self.highest_score = int(data.read())
+            data = pd.read_csv(csv_file)
+            self.highest_score = data["score"].max()
         except FileNotFoundError:
             self.highest_score = 0
+
         self.BP_SPEED = -4
         # ######## bird's control ########################
         self.ANGULAR_SPEED = 3
@@ -309,8 +330,6 @@ class FlappyBirdGame:
             self.SCORE += 1
             if self.SCORE > self.highest_score:
                 self.highest_score = self.SCORE
-                with open("score.txt", mode="w") as data:
-                    data.write(f"{self.highest_score}")
 
             self.SOUNDS["point"].play()
             pipe.count = True
@@ -378,11 +397,21 @@ class FlappyBirdGame:
         elif self.GAME_STATES[self.STATE_INDEX] == "over":
             self.game_over()
 
-            print(f"Episode: {self.agent.num_episodes}   Highest Score= {self.highest_score}")
-
         glutSwapBuffers()
 
     def reset(self):
+        global csv_file
+        print(f"Episode: {self.agent.num_episodes}   Highest Score= {self.highest_score}")
+
+        # Check if the file already exists
+        file_exists = os.path.isfile(csv_file)
+
+        # Create a DataFrame with the episode and score data
+        data = pd.DataFrame({"episode": [self.agent.num_episodes], "score": [self.SCORE]})
+
+        # Append the data to the CSV file
+        data.to_csv(csv_file, mode="a", index=False, header=not file_exists)
+
         self.pipes = [Pipe(self.TEXTURES["pipe"])]
         self.bird.reset()
         self.SCORE = 0
@@ -418,6 +447,7 @@ class FlappyBirdGame:
         bird_centre = state['bird_y']
         bird_v = state['bird_v']
         gap_x = state['pipe_positions'][0] - self.next_pipe.width * 0.5
+        gap_y = state['pipe_positions'][1]
         gap_top = self.next_pipe.upper_y
         gap_down = self.next_pipe.lower_y
         bird_height = self.bird.height
@@ -427,6 +457,10 @@ class FlappyBirdGame:
         if gap_down + gap_size_quarter <= bird_centre <= gap_top - gap_size_quarter:
             reward += 60
         elif gap_down + bird_height <= bird_centre <= gap_top - bird_height:  # within the gap exactly
+            if bird_centre < gap_y and bird_v >= 0:
+                reward += 10
+            if bird_centre > gap_y and bird_v <= 0:
+                reward += 10
             reward += 20
         elif bird_centre < gap_down + bird_height:  # scope within 45deg lower than the gap
             pipe_bird_distance_x = gap_x - self.bird.right
@@ -434,20 +468,20 @@ class FlappyBirdGame:
             if pipe_bird_distance_y < pipe_bird_distance_x:
                 reward += 0
             if bird_v <= 0:
-                reward -= 1
+                reward -= 10
             else:
-                reward += 1
+                reward += 10
         elif bird_centre > gap_top - bird_height:  # scope within 45deg higher than the gap
             pipe_bird_distance_x = gap_x - self.bird.right
             pipe_bird_distance_y = bird_centre - gap_top
             if pipe_bird_distance_y < pipe_bird_distance_x:
                 reward += 0
             if bird_v > 0:
-                reward -= 2
+                reward -= 10
             else:
-                reward += 2
+                reward += 10
         else:
-            reward -= 5
+            reward -= 10
 
         return reward
 
@@ -480,6 +514,7 @@ class FlappyBirdGame:
 
         if key == b"q":
             glutDestroyWindow(self.window)
+            plot()
 
 
 env = FlappyBirdGame()

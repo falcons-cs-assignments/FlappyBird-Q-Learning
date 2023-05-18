@@ -1,6 +1,9 @@
 import random
 import numpy as np
+import pandas as pd
 
+
+csv_file = "data.csv"
 
 # ranges of state variables
 RANGE = {
@@ -9,7 +12,7 @@ RANGE = {
     'gap_y': [300, 550]
 }
 # size of buckets
-BUCKET_SIZE = [10, 30, 10]
+BUCKET_SIZE = [5, 40, 5]
 # num of buckets
 bucket_num = [int(i) for i in [
                     (RANGE['bird_y'][1] - RANGE['bird_y'][0]) / BUCKET_SIZE[0],
@@ -46,15 +49,15 @@ def map_state_to_index(state):
                           )
     }
     """
-    bird_y = mapping(state['bird_y'], 144, 10)
+    bird_y = mapping(state['bird_y'], RANGE['bird_y'][0], BUCKET_SIZE[0])
 
     bird_v = 1
     if state['bird_v'] < 0:
         bird_v = 0
 
-    pipe_x = mapping(state['pipe_positions'][0], 93, 20)
+    pipe_x = mapping(state['pipe_positions'][0], RANGE['gap_x'][0], BUCKET_SIZE[1])
     pipe_x = pipe_x if pipe_x < bucket_num[1] else bucket_num[1]
-    pipe_y = mapping(state['pipe_positions'][1], 314, 10)
+    pipe_y = mapping(state['pipe_positions'][1], RANGE['gap_y'][0], BUCKET_SIZE[2])
 
     indexes = (
         bird_y,
@@ -87,7 +90,12 @@ class QLearn:
     # Set hyper parameters
         self.alpha = 0.1
         self.gamma = 0.9
-        self.num_episodes = 0
+
+        try:
+            data = pd.read_csv(csv_file)
+            self.num_episodes = data["episode"].max()
+        except FileNotFoundError:
+            self.num_episodes = 0
 
         # Define epsilon (the exploration rate)
         self.epsilon = 0.05
