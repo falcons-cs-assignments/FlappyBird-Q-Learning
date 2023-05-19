@@ -2,6 +2,26 @@ from pathlib import Path
 from pygame import mixer, image
 from classes import *
 from qlearn_agent import Q_learn
+import matplotlib.pyplot as plt
+import os
+import pandas as pd
+
+
+csv_file = "data.csv"
+
+
+def plot():
+    data = pd.read_csv(csv_file)
+    episode_data = data["episode"].to_list()
+    score_data = data["score"].to_list()
+    plt.scatter(episode_data, score_data)
+    plt.xlabel("Number of Episodes")
+    plt.ylabel("SCORE")
+    plt.title("Flappy Bird")
+    plt.show()
+    # TODO: print the accuracy
+    # accuracy = ...
+    # print(accuracy)
 
 
 class FlappyBirdGame:
@@ -19,8 +39,8 @@ class FlappyBirdGame:
         self.SCORE = 0
         self.previous_score = 0
         try:
-            with open("score.txt") as data:
-                self.highest_score = int(data.read())
+            data = pd.read_csv(csv_file)
+            self.highest_score = data["score"].max()
         except FileNotFoundError:
             self.highest_score = 0
         self.BP_SPEED = -4
@@ -42,7 +62,7 @@ class FlappyBirdGame:
             self.cur_path + '/assets/sprites/mid.png',
             self.cur_path + '/assets/sprites/down.png')
         ##################################################
-        self.frames_per_step = 12  # number of frames after it the agent will take a decision
+        self.frames_per_step = 10  # number of frames after it the agent will take a decision
         self.counter = self.frames_per_step  # counter down to accumulate the number of frames
         self.agent = None
         self.next_pipe = None  # the pipe that the bird should focus on
@@ -309,8 +329,6 @@ class FlappyBirdGame:
             self.SCORE += 1
             if self.SCORE > self.highest_score:
                 self.highest_score = self.SCORE
-                with open("score.txt", mode="w") as data:
-                    data.write(f"{self.highest_score}")
             self.SOUNDS["point"].play()
             pipe.count = True
             self.next_pipe = self.pipes[1]  # make the agent focus on the next pipe
@@ -376,11 +394,24 @@ class FlappyBirdGame:
 
         elif self.GAME_STATES[self.STATE_INDEX] == "over":
             self.game_over()
-            print(f"Episode: {self.agent.num_episodes}   Highest Score= {self.highest_score}")
 
         glutSwapBuffers()
 
+    def save_data(self):
+        global csv_file
+        print(f"Episode: {self.agent.num_episodes}   Highest Score= {self.highest_score}")
+
+        # Check if the file already exists
+        file_exists = os.path.isfile(csv_file)
+
+        # Create a DataFrame with the episode and score data
+        data = pd.DataFrame({"episode": [self.agent.num_episodes], "score": [self.SCORE]})
+
+        # Append the data to the CSV file
+        data.to_csv(csv_file, mode="a", index=False, header=not file_exists)
+
     def reset(self):
+        self.save_data()
         self.pipes = [Pipe(self.TEXTURES["pipe"])]
         self.next_pipe = self.pipes[0]
         self.bird.reset()
@@ -484,6 +515,7 @@ class FlappyBirdGame:
 
         if key == b"q":
             glutDestroyWindow(self.window)
+            plot()
 
 
 env = FlappyBirdGame()

@@ -1,6 +1,9 @@
 import random
 import numpy as np
+import pandas as pd
 
+
+csv_file = "data.csv"
 
 # ranges of state variables
 RANGE = {
@@ -76,7 +79,11 @@ class Q_learn:
         # Set hyper parameters
         self.alpha = 0.1
         self.gamma = 0.8
-        self.num_episodes = 0
+        try:
+            data = pd.read_csv(csv_file)
+            self.num_episodes = data["episode"].max()
+        except FileNotFoundError:
+            self.num_episodes = 0
 
         # Define epsilon (the exploration rate)
         self.epsilon = 0.1
