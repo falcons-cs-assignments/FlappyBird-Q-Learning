@@ -1,9 +1,6 @@
 import random
 import numpy as np
-import pandas as pd
 
-
-csv_file = "data.csv"
 
 # ranges of state variables
 RANGE = {
@@ -12,12 +9,12 @@ RANGE = {
     'gap_y': [300, 550]
 }
 # size of buckets
-BUCKET_SIZE = [5, 40, 5]
+BUCKET_SIZE = [5, 50, 5]
 # num of buckets
 bucket_num = [int(i) for i in [
-                    (RANGE['bird_y'][1] - RANGE['bird_y'][0]) / BUCKET_SIZE[0],
-                    (RANGE['gap_x'][1] - RANGE['gap_x'][0]) / BUCKET_SIZE[1],
-                    (RANGE['gap_y'][1] - RANGE['gap_y'][0]) / BUCKET_SIZE[2]
+    (RANGE['bird_y'][1] - RANGE['bird_y'][0]) / BUCKET_SIZE[0],
+    (RANGE['gap_x'][1] - RANGE['gap_x'][0]) / BUCKET_SIZE[1],
+    (RANGE['gap_y'][1] - RANGE['gap_y'][0]) / BUCKET_SIZE[2]
                                 ]]
 
 
@@ -27,7 +24,6 @@ def mapping(sample, start, bucket_size):
 
 
 def map_state_to_index(state):
-    # Todo: convert continuous state to a discrete index
     # Todo: Take into your account that ... There is a special state at the start of the game "pipe_x variable is at the very right"
     """
     # input form:
@@ -37,16 +33,6 @@ def map_state_to_index(state):
         'pipe_positions':
         'score':
         'game_state':
-    }
-
-    # ranges of important variables of the state:
-    state = {
-        'bird_y': [144:720]     bucket_size: 10
-        'bird_v': [-15:+5]      index: '0' or '1' for 'up' or 'down'
-        'pipe_positions': (
-                            pipe.gap_x: [93:393]        bucket_size: 20
-                            pipe.gap_y: [314:550]       bucket_size: 10
-                          )
     }
     """
     bird_y = mapping(state['bird_y'], RANGE['bird_y'][0], BUCKET_SIZE[0])
@@ -69,17 +55,17 @@ def map_state_to_index(state):
     return indexes  # It's a tuple to be used in indexing a np array
 
 
-class QLearn:
+class Q_learn:
     def __init__(self, state):
         self.init_state_index = map_state_to_index(state)
         self.state_index = self.init_state_index
         self.next_state_index = None
         self.action_index = 1
         # Initialize Q-table
-        self.num_states = (bucket_num[0],  # num of bird_y buckets
+        self.num_states = (bucket_num[0] + 1,  # num of bird_y buckets
                            2,   # num of bird_velocity buckets
-                           bucket_num[0] + 1,  # num of gap_x buckets
-                           bucket_num[0]   # num of gap_y buckets
+                           bucket_num[1] + 1,  # num of gap_x buckets
+                           bucket_num[2] + 1  # num of gap_y buckets
                            )
         self.num_actions = (2,)  # It's a tuple
         try:
@@ -87,25 +73,17 @@ class QLearn:
         except FileNotFoundError:
             self.Q = np.zeros(self.num_states + self.num_actions)
 
-    # Set hyper parameters
+        # Set hyper parameters
         self.alpha = 0.1
-        self.gamma = 0.9
-
-        try:
-            data = pd.read_csv(csv_file)
-            self.num_episodes = data["episode"].max()
-        except FileNotFoundError:
-            self.num_episodes = 0
+        self.gamma = 0.8
+        self.num_episodes = 0
 
         # Define epsilon (the exploration rate)
-        self.epsilon = 0.05
+        self.epsilon = 0.1
 
     def reset(self):
         self.state_index = self.init_state_index
         self.action_index = 1
-
-    START_RANGES = [144, 93, 314]
-    BUCKET_SIZES = [10, 20]
 
     # Define a function to select an action using epsilon-greedy strategy
     def epsilon_greedy(self, state_index):
@@ -151,8 +129,8 @@ class QLearn:
             self.reset()
             # print number of complete episodes
             # print(self.num_episodes)
+            # print(self.Q.shape)
             self.num_episodes += 1
-
-            # save Q_table each 20 episodes
+            # save Q_table each 200 episodes
             if self.num_episodes % 200 == 0:
                 np.save("./q_table.npy", self.Q, allow_pickle=True)
