@@ -13,7 +13,7 @@ BASEY = SCREENHEIGHT * 0.2
 
 
 def random_gap():
-    return randint(int(BASEY) + 190, SCREENHEIGHT - 190)
+    return randint(int(BASEY) + 206, SCREENHEIGHT - 220)
 
 
 def draw_rectangle_with_tex(left, right, bottom, top, tex, z=0):

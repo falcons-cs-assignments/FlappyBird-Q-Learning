@@ -9,7 +9,7 @@ csv_file = "data.csv"
 RANGE = {
     'bird_y': [140, 720],
     'gap_x': [90, 400],
-    'gap_y': [300, 550]
+    'gap_y': [350, 500]
 }
 # size of buckets
 BUCKET_SIZE = [5, 50, 5]
@@ -77,22 +77,22 @@ class Q_learn:
             self.Q = np.zeros(self.num_states + self.num_actions)
 
         # Set hyper parameters
-        self.alpha = 0.08
-        self.gamma = 0.93
+        self.alpha = 0.1
+        self.gamma = 0.5
         try:
             data = pd.read_csv(csv_file)
             self.num_episodes = data["episode"].max()
         except FileNotFoundError:
             self.num_episodes = 0
         self.last_episode = self.num_episodes
-        print(self.num_episodes)
 
         # Define epsilon (the exploration rate)
-        self.epsilon = 0.001
+        self.epsilon = 0.05
 
     def reset(self):
         self.state_index = self.init_state_index
         self.action_index = 1
+        self.num_episodes += 1
 
     # Define a function to select an action using epsilon-greedy strategy
     def epsilon_greedy(self, state_index):
@@ -137,7 +137,6 @@ class Q_learn:
         if done:
             self.reset()
             # print(self.Q.shape)
-            self.num_episodes += 1
 
     def save_q_table(self):
         np.save("./q_table.npy", self.Q, allow_pickle=True)

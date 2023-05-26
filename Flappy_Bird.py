@@ -6,7 +6,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-exploration = True
+EXPLORATION = True
+LEARNING = True
+DISPLAYING = False
+EPISODES_BEFORE_DISPLAY = 2000
 
 
 def plot():
@@ -285,8 +288,12 @@ class FlappyBirdGame:
 
 # control the game loop ################################################################
     def frames(self, t=1):
+        global DISPLAYING
         if self.is_window_open:
-            if self.agent.num_episodes > self.agent.last_episode + 1000:
+            if self.agent.num_episodes == self.agent.last_episode + EPISODES_BEFORE_DISPLAY:
+                DISPLAYING = True
+                self.PERIOD = 7
+            if DISPLAYING:
                 self.display()
             self.update_frame()
             self.counter -= 1
@@ -313,7 +320,8 @@ class FlappyBirdGame:
         if self.GAME_STATES[self.STATE_INDEX] == "welcome":
             # start the game automatically
             if self.counter == 0:
-                self.SOUNDS["jump"].play()
+                if DISPLAYING:
+                    self.SOUNDS["jump"].play()
                 self.bird.reset()
                 self.bird.velocity = self.JUMP_VELOCITY  # make self.bird go up
                 self.STATE_INDEX = next(self.STATE_SEQUENCE)
@@ -324,7 +332,8 @@ class FlappyBirdGame:
             # agent take decision
             if self.counter == 0:
                 state = self.get_state()
-                self.agent.learn(state, self.get_reward())
+                if LEARNING:
+                    self.agent.learn(state, self.get_reward())
                 self.agent_decide(state)
                 self.counter = self.frames_per_step
 
@@ -340,7 +349,10 @@ class FlappyBirdGame:
                 self.STATE_INDEX = next(self.STATE_SEQUENCE)
 
         elif self.GAME_STATES[self.STATE_INDEX] == "over":
-            self.agent.learn(self.get_state(), self.get_reward(), done=True)
+            if LEARNING:
+                self.agent.learn(self.get_state(), self.get_reward(), done=True)
+            else:
+                self.agent.reset()
             self.reset()
 
     # ###################### Render game states ########################################
@@ -383,7 +395,8 @@ class FlappyBirdGame:
         # increase score if all bird's body crossed the pipe's right side
         if not pipe.count and pipe.right <= self.bird.left:
             self.SCORE += 1
-            self.SOUNDS["point"].play()
+            if DISPLAYING:
+                self.SOUNDS["point"].play()
             pipe.count = True
             # make the agent focus on the next pipe
             self.next_pipe = self.pipes[1]
@@ -485,10 +498,11 @@ class FlappyBirdGame:
         return reward
 
     def agent_decide(self, state):
-        action = self.agent.take_action(state, exploration)
+        action = self.agent.take_action(state, EXPLORATION)
         if action == "jump":
             if self.STATE_INDEX == 1:  # state is MAIN GAME, hence make the self.bird jump.
-                self.SOUNDS["jump"].play()
+                if DISPLAYING:
+                    self.SOUNDS["jump"].play()
                 self.bird.velocity = self.JUMP_VELOCITY  # make self.bird go up
 
     # helpful methods ##############################################################
