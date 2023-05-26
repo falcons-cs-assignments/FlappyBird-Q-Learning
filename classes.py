@@ -13,7 +13,7 @@ BASEY = SCREENHEIGHT * 0.2
 
 
 def random_gap():
-    return randint(int(BASEY) + 170, SCREENHEIGHT - 170)
+    return randint(int(BASEY) + 190, SCREENHEIGHT - 190)
 
 
 def draw_rectangle_with_tex(left, right, bottom, top, tex, z=0):
@@ -58,7 +58,7 @@ class Pipe:
 
 
 class Bird:
-    def __init__(self, tex, gravity=0.2, angular_s=0.5):
+    def __init__(self, tex, gravity=-0.2, angular_s=0.5):
         # shape attributes
         self.height = 40
         self.width = 1.3 * self.height   # width is longer than height
@@ -99,7 +99,6 @@ class Bird:
                 self.tex_index = next(self.tex_sequence)
 
     def fly(self, fly_range=15):
-        self.draw()
         # moving the bird up or down.
         self.bottom += self.fly_speed
         self.top += self.fly_speed
@@ -125,8 +124,6 @@ class Bird:
             self.velocity = 0
 
         self.velocity += self.gravity
-
-        self.draw()
 
     def die(self):
         self.swap = False
