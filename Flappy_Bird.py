@@ -1,13 +1,12 @@
 from pathlib import Path
 from pygame import mixer, image
 from classes import *
-from qlearn_agent import Q_learn
+from qlearn_agent import *
 import matplotlib.pyplot as plt
-import os
 import pandas as pd
 
 
-csv_file = "data.csv"
+exploration = True
 
 
 def plot():
@@ -25,11 +24,12 @@ def plot():
 
 
 class FlappyBirdGame:
+    agent: Q_learn
     next_pipe: Pipe
 
     def __init__(self):
         self.cur_path = str(Path(__file__).parent.resolve())
-        self.PERIOD = 1
+        self.PERIOD = 0
         # ######## to control the game ###############
         self.GAME_STATES = ["welcome", "main", "over"]
         self.STATE_SEQUENCE = cycle([1, 2, 0])
@@ -42,7 +42,12 @@ class FlappyBirdGame:
             data = pd.read_csv(csv_file)
             self.highest_score = data["score"].max()
         except FileNotFoundError:
+            data = pd.DataFrame({"episode": [0], "score": [0]})
+            # Append the data to the CSV file
+            data.to_csv(csv_file, mode="a", index=False, header=True)
             self.highest_score = 0
+        self.csv_episodes = []
+        self.csv_score = []
         self.BP_SPEED = -4
         # ######## bird's control ########################
         self.ANGULAR_SPEED = 3
@@ -54,6 +59,7 @@ class FlappyBirdGame:
         self.bird = None
         self.base = None
         self.window = None
+        self.is_window_open = True
         ###########################################
         self.TEXTURES = {}  # at the start of game, all textures will be created once time and saved in it.
         self.SOUNDS = {}
@@ -77,7 +83,6 @@ class FlappyBirdGame:
         self.window = glutCreateWindow(b"Flappy Bird")
 
         glutDisplayFunc(self.display)
-        # glutTimerFunc(self.PERIOD, self.timer, 1)
         glutKeyboardFunc(self.keyboard)
         glutSetKeyRepeat(GLUT_KEY_REPEAT_OFF)
         self.init()
@@ -90,15 +95,15 @@ class FlappyBirdGame:
         glEnable(GL_TEXTURE_2D)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        
+
         self.init_texture()
         self.init_sounds()
         self.init_objects()
-        
+
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         glOrtho(0, SCREENWIDTH, 0, SCREENHEIGHT, -3, 3)
-        
+
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
 
@@ -274,35 +279,86 @@ class FlappyBirdGame:
         self.pipes.append(Pipe(self.TEXTURES["pipe"]))
         self.next_pipe = self.pipes[0]
         self.bird = Bird(self.TEXTURES["bird"], self.GRAVITY, self.ANGULAR_SPEED)
+        self.bird.fly_speed = 0
         self.base = Base(self.TEXTURES["base"], 0.1)
         self.agent = Q_learn(self.get_state())
 
-    # ###################### game states ########################################
+# control the game loop ################################################################
+    def frames(self, t=1):
+        if self.is_window_open:
+            if self.agent.num_episodes > self.agent.last_episode + 1000:
+                self.display()
+            self.update_frame()
+            self.counter -= 1
+            glutTimerFunc(self.PERIOD, self.frames, t)
 
+    def display(self):
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glLoadIdentity()
+        self.set_background()
+        self.base.draw()
+
+        if self.GAME_STATES[self.STATE_INDEX] == "welcome":
+            self.welcome()
+
+        elif self.GAME_STATES[self.STATE_INDEX] == "main":
+            self.main_game()
+
+        elif self.GAME_STATES[self.STATE_INDEX] == "over":
+            self.game_over()
+
+        glutSwapBuffers()
+
+    def update_frame(self):
+        if self.GAME_STATES[self.STATE_INDEX] == "welcome":
+            # start the game automatically
+            if self.counter == 0:
+                self.SOUNDS["jump"].play()
+                self.bird.reset()
+                self.bird.velocity = self.JUMP_VELOCITY  # make self.bird go up
+                self.STATE_INDEX = next(self.STATE_SEQUENCE)
+
+                self.counter = self.frames_per_step
+
+        elif self.GAME_STATES[self.STATE_INDEX] == "main":
+            # agent take decision
+            if self.counter == 0:
+                state = self.get_state()
+                self.agent.learn(state, self.get_reward())
+                self.agent_decide(state)
+                self.counter = self.frames_per_step
+
+            # update the frame
+            self.base.move(self.BP_SPEED)
+            for pipe in self.pipes:
+                pipe.move(self.BP_SPEED)
+            self.update_pipes()
+            self.update_score()
+
+            self.bird.move()
+            if self.check_crash():
+                self.STATE_INDEX = next(self.STATE_SEQUENCE)
+
+        elif self.GAME_STATES[self.STATE_INDEX] == "over":
+            self.agent.learn(self.get_state(), self.get_reward(), done=True)
+            self.reset()
+
+    # ###################### Render game states ########################################
     def welcome(self):
         self.show_welcome()
-        self.bird.fly_speed = 0
-        self.bird.fly()
+        self.bird.draw()
 
     def main_game(self):
-        self.base.move(self.BP_SPEED)
         for pipe in self.pipes:
-            pipe.move(self.BP_SPEED)
             pipe.draw()
-        self.update_pipes()
-        
-        self.update_score()
         self.show_score(str(self.SCORE))
-        
-        self.bird.move()
-        if self.check_crash():
-            self.STATE_INDEX = next(self.STATE_SEQUENCE)
+        self.bird.draw()
 
     def game_over(self):
-        self.agent.learn(self.get_state(), self.get_reward(), done=True)
-        self.reset()
+        self.show_game_over()
 
-    # #################### assistant Methods ##################################
+# #################### assistant Methods ##################################
+    # Logic ##############
     def check_crash(self):
         # Check if the bird has crashed into a pipe
         pipe = self.pipes[0]
@@ -313,7 +369,7 @@ class FlappyBirdGame:
         # crash with the ground
         if self.bird.bottom <= BASEY:
             return True
-        
+
         return False
 
     def update_pipes(self):
@@ -324,15 +380,15 @@ class FlappyBirdGame:
 
     def update_score(self):
         pipe = self.pipes[0]
-        # increase score if all bird's body crossed the pipe's right
+        # increase score if all bird's body crossed the pipe's right side
         if not pipe.count and pipe.right <= self.bird.left:
             self.SCORE += 1
-            if self.SCORE > self.highest_score:
-                self.highest_score = self.SCORE
             self.SOUNDS["point"].play()
             pipe.count = True
-            self.next_pipe = self.pipes[1]  # make the agent focus on the next pipe
+            # make the agent focus on the next pipe
+            self.next_pipe = self.pipes[1]
 
+    # Render ##############
     def show_score(self, score):
         """
         take score as a string and display it.
@@ -360,71 +416,13 @@ class FlappyBirdGame:
         draw_rectangle_with_tex(50, 550, 420, 720, self.TEXTURES["msg"], 0.5)
         draw_rectangle_with_tex(0, SCREENWIDTH, 0, BASEY + 200, self.TEXTURES["start"], 0.2)
 
-    #############################################################################
-    def frames(self, t=1):
-        self.display()
-        self.counter -= 1
-        glutTimerFunc(self.PERIOD, self.frames, t)
-
-    def display(self):
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glLoadIdentity()
-        self.set_background()
-        self.base.draw()
-
-        if self.GAME_STATES[self.STATE_INDEX] == "welcome":
-            self.welcome()
-            # start the game automatically
-            if self.counter == 0:
-                self.SOUNDS["jump"].play()
-                self.bird.reset()
-                self.bird.velocity = self.JUMP_VELOCITY  # make self.bird go up
-                self.STATE_INDEX = next(self.STATE_SEQUENCE)
-
-                self.counter = self.frames_per_step
-
-        elif self.GAME_STATES[self.STATE_INDEX] == "main":
-            # agent take decision
-            if self.counter == 0:
-                state = self.get_state()
-                self.agent.learn(state, self.get_reward())
-                self.counter = self.agent_decide(state)
-
-            self.main_game()
-
-        elif self.GAME_STATES[self.STATE_INDEX] == "over":
-            self.game_over()
-
-        glutSwapBuffers()
-
-    def save_data(self):
-        global csv_file
-        print(f"Episode: {self.agent.num_episodes}   Highest Score= {self.highest_score}")
-
-        # Check if the file already exists
-        file_exists = os.path.isfile(csv_file)
-
-        # Create a DataFrame with the episode and score data
-        data = pd.DataFrame({"episode": [self.agent.num_episodes], "score": [self.SCORE]})
-
-        # Append the data to the CSV file
-        data.to_csv(csv_file, mode="a", index=False, header=not file_exists)
-
-    def reset(self):
-        self.save_data()
-        self.pipes = [Pipe(self.TEXTURES["pipe"])]
-        self.next_pipe = self.pipes[0]
-        self.bird.reset()
-        self.SCORE = 0
-        self.STATE_INDEX = 0
-        self.counter = self.frames_per_step
-
+#################################################################################
+# AI agent methods ##############################################################
     def get_state(self):
         # Return the current state of the game
         state = {
             'bird_y': (self.bird.bottom + self.bird.top) / 2,  # centre of the bird
             'bird_v': self.bird.velocity,
-            # Todo: make pipe_positions: (horizontal distance between bird and pipe, gap_y)
             'pipe_positions': (self.next_pipe.left + self.next_pipe.width * 0.5, self.next_pipe.gap_y),
             'score': self.SCORE,
             'game_state': self.GAME_STATES[self.STATE_INDEX]
@@ -463,61 +461,73 @@ class FlappyBirdGame:
             if bird_centre > gap_y and bird_v <= 0:
                 reward += 10
             reward += 20
-        elif bird_centre < gap_down + bird_height:  # scope within 45deg lower than the gap
+        elif bird_centre < gap_down + bird_height:  # bird lower than the gap
             pipe_bird_distance_x = gap_x - self.bird.right
             pipe_bird_distance_y = gap_down - bird_centre
-            if pipe_bird_distance_y < pipe_bird_distance_x:
-                reward += 0
-            if bird_v <= 0:
-                reward -= 10
+            if pipe_bird_distance_y < pipe_bird_distance_x:  # scope within 45deg lower than the gap
+                if bird_v <= 0:
+                    reward -= 10
+                else:
+                    reward += 10
             else:
-                reward += 10
-        elif bird_centre > gap_top - bird_height:  # scope within 45deg higher than the gap
+                reward -= 10
+        elif bird_centre > gap_top - bird_height:  # bird higher than the gap
             pipe_bird_distance_x = gap_x - self.bird.right
             pipe_bird_distance_y = bird_centre - gap_top
-            if pipe_bird_distance_y < pipe_bird_distance_x:
-                reward += 0
-            if bird_v > 0:
-                reward -= 10
+            if pipe_bird_distance_y < pipe_bird_distance_x:  # scope within 45deg higher than the gap
+                if bird_v > 0:
+                    reward -= 10
+                else:
+                    reward += 10
             else:
-                reward += 10
-        else:
-            reward -= 10
+                reward -= 10
 
         return reward
 
     def agent_decide(self, state):
-        action = self.agent.take_action(state)
+        action = self.agent.take_action(state, exploration)
         if action == "jump":
             if self.STATE_INDEX == 1:  # state is MAIN GAME, hence make the self.bird jump.
                 self.SOUNDS["jump"].play()
                 self.bird.velocity = self.JUMP_VELOCITY  # make self.bird go up
 
-        return self.frames_per_step
+    # helpful methods ##############################################################
+    def save_data(self, force=False):
+        print(f"Episode: {self.agent.num_episodes}, Score: {self.SCORE},  Highest Score= {self.highest_score}")
+        self.csv_episodes.append(self.agent.num_episodes)
+        self.csv_score.append(self.SCORE)
 
+        if len(self.csv_episodes) == 500 or force:
+            # Create a DataFrame with the episode and score data
+            data = pd.DataFrame({"episode": self.csv_episodes, "score": self.csv_score})
+            # Append the data to the CSV file
+            data.to_csv(csv_file, mode="a", index=False, header=False)
+            self.csv_episodes.clear()
+            self.csv_score.clear()
+
+    def reset(self):
+        self.save_data()
+        self.pipes = [Pipe(self.TEXTURES["pipe"])]
+        self.next_pipe = self.pipes[0]
+        self.bird.reset()
+
+        # update highest score
+        if self.SCORE > self.highest_score:
+            self.highest_score = self.SCORE
+        self.SCORE = 0
+        self.STATE_INDEX = 0
+        self.counter = self.frames_per_step
+
+# keyboard handler ################################################################
     def keyboard(self, key, a, b):
-        if key == b" ":
-            if self.STATE_INDEX == 1:  # state is MAIN GAME, hence make the self.bird jump.
-                self.SOUNDS["jump"].play()
-                self.bird.velocity = self.JUMP_VELOCITY  # make self.bird go up
-
-            elif self.STATE_INDEX == 0:  # state is WELCOME.
-                self.SOUNDS["jump"].play()
-                self.bird.reset()
-                self.bird.velocity = self.JUMP_VELOCITY  # make self.bird go up
-                self.STATE_INDEX = next(self.STATE_SEQUENCE)
-
-            elif self.STATE_INDEX == 2:  # state is GAME OVER.
-                self.pipes = [Pipe(self.TEXTURES["pipe"])]
-                self.bird.reset()
-                self.SCORE = 0
-                self.STATE_INDEX = next(self.STATE_SEQUENCE)
-
         if key == b"q":
+            self.agent.save_q_table()
+            self.save_data(True)
+            self.is_window_open = False
             glutDestroyWindow(self.window)
             plot()
 
 
-env = FlappyBirdGame()
-
-print("hello")
+if __name__ == "__main__":
+    env = FlappyBirdGame()
+    print("hello")

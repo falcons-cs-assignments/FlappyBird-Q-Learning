@@ -77,16 +77,18 @@ class Q_learn:
             self.Q = np.zeros(self.num_states + self.num_actions)
 
         # Set hyper parameters
-        self.alpha = 0.1
-        self.gamma = 0.8
+        self.alpha = 0.08
+        self.gamma = 0.93
         try:
             data = pd.read_csv(csv_file)
             self.num_episodes = data["episode"].max()
         except FileNotFoundError:
             self.num_episodes = 0
+        self.last_episode = self.num_episodes
+        print(self.num_episodes)
 
         # Define epsilon (the exploration rate)
-        self.epsilon = 0.1
+        self.epsilon = 0.001
 
     def reset(self):
         self.state_index = self.init_state_index
@@ -117,8 +119,8 @@ class Q_learn:
         else:
             max_value = max(self.Q[state_index])
             actions_indices = [i for i, v in enumerate(self.Q[state_index]) if v == max_value]
-            action_index = random.choice(actions_indices)
-            action = "jump" if action_index else " "
+            self.action_index = random.choice(actions_indices)
+            action = "jump" if self.action_index else " "
         return action
 
     # Q-learning algorithm
@@ -134,10 +136,19 @@ class Q_learn:
         # when episode ends reset the agent
         if done:
             self.reset()
-            # print number of complete episodes
-            # print(self.num_episodes)
             # print(self.Q.shape)
             self.num_episodes += 1
-            # save Q_table each 200 episodes
-            if self.num_episodes % 200 == 0:
-                np.save("./q_table.npy", self.Q, allow_pickle=True)
+
+    def save_q_table(self):
+        np.save("./q_table.npy", self.Q, allow_pickle=True)
+
+
+if __name__ == "__main__":
+    state = {
+        'bird_y': 155,
+        'bird_v': 5,
+        'pipe_positions': (50, 100),
+        'score': 500,
+        'game_state': 5
+    }
+    obj = Q_learn(state)
