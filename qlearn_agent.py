@@ -2,8 +2,8 @@ import random
 import numpy as np
 import pandas as pd
 
-EXPLORATION = True
-LEARNING = True
+EXPLORATION = False
+LEARNING = False
 csv_file = "learning.csv" if LEARNING else "playing.csv"
 
 # ranges of state variables
@@ -13,7 +13,7 @@ RANGE = {
     'gap_y': [350, 500]
 }
 # size of buckets
-BUCKET_SIZE = [5, 50, 5]
+BUCKET_SIZE = [10, 60, 10]
 # num of buckets
 bucket_num = [
     (RANGE['bird_y'][1] - RANGE['bird_y'][0]) // BUCKET_SIZE[0],
@@ -79,7 +79,7 @@ class Q_learn:
 
         # Set hyper parameters
         self.alpha = 0.1
-        self.gamma = 0.9
+        self.gamma = 0.5
         try:
             data = pd.read_csv(csv_file)
             self.num_episodes = data["episode"].max()
@@ -88,7 +88,7 @@ class Q_learn:
         self.last_episode = self.num_episodes
 
         # Define epsilon (the exploration rate)
-        self.epsilon = 0.05
+        self.epsilon = 0.01
 
     def reset(self):
         self.state_index = self.init_state_index

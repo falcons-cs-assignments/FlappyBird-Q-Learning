@@ -5,20 +5,21 @@ from qlearn_agent import *
 import matplotlib.pyplot as plt
 import pandas as pd
 
-
-DISPLAYING = False
-EPISODES_BEFORE_DISPLAY = 2000
+DISPLAYING = True
+EPISODES_BEFORE_DISPLAY = 1
+PERIOD = 1
 
 
 def plot():
     data = pd.read_csv(csv_file)
 
-    episode_data = data["episode"].to_list()
-    score_data = data["score"].to_list()
+    episode_data = data["episode"].tolist()
+    score_data = data["score"].tolist()
 
     # Create lists to store the colors for each point and count the color occurrences
     colors = []
     color_counts = {'Red': 0, 'Blue': 0, 'Green': 0}
+    total = len(score_data)
 
     # Assign colors based on score range
     for score in score_data:
@@ -32,26 +33,66 @@ def plot():
             colors.append('green')
             color_counts['Green'] += 1
 
-    # Plot the scatter plot with colored points
-    plt.scatter(episode_data, score_data, c=colors)
-
-    # Set labels and title
-    plt.xlabel("Number of Episodes")
-    plt.ylabel("SCORE")
-    plt.title("Flappy Bird")
-
-    # Create legend with color counts
-    legend_labels = ['Red (<50) - Count: {}'.format(color_counts['Red']),
-                     'Blue (50-100) - Count: {}'.format(color_counts['Blue']),
-                     'Green (>100) - Count: {}'.format(color_counts['Green'])]
+    # Create legend with color counts for the scatter plot
+    legend_labels = ['Red (<50) - ratio: {}'.format(round(color_counts['Red'] / total, 2)),
+                     'Blue (50-100) - ratio: {}'.format(round(color_counts['Blue'] / total, 2)),
+                     'Green (>100) - ratio: {}'.format(round(color_counts['Green'] / total, 2))]
 
     legend_handles = [plt.Line2D([], [], marker='o', markersize=10, color=c, linestyle='None') for c in
                       ['red', 'blue', 'green']]
 
-    plt.legend(legend_handles, legend_labels, fontsize=8)
+    if LEARNING:
+        plt.scatter(episode_data, score_data, c=colors)
+        plt.legend(legend_handles, legend_labels, fontsize=8)
+        plt.xlabel("Number of Episodes")
+        plt.ylabel("SCORE")
+        plt.title("Flappy Bird")
+
+    else:
+        # Create a figure with three subplots
+        fig, (points, columns, box) = plt.subplots(1, 3, figsize=(12, 6))
+
+        # Plot the scatter plot in the first subplot
+        points.scatter(episode_data, score_data, c=colors)
+
+        # Set labels and title for the first subplot
+        points.set_xlabel("Number of Episodes")
+        points.set_ylabel("SCORE")
+        points.set_title("Flappy Bird")
+        points.legend(legend_handles, legend_labels, fontsize=8)
+
+        # Calculate the histogram data
+        highest_score = 7001  # max(score_data)
+        num_bins = highest_score // 200 + 1
+        hist_data = [0] * num_bins
+
+        #  ###############  To draw the histogram and boxplot in all the range of the scores  ##################
+        #      1) in the previous line make the highest_score = max(score_data)
+        #      2) comment the following line
+        #      3) replace "filtered" with => "score_data"
+
+        filtered = list(filter(lambda i: i <= 7000, score_data))
+
+        for score in filtered:
+            bin_index = score // 200
+            hist_data[bin_index] += 1
+
+        # Create the histogram in the second subplot
+        bin_edges = [i * 200 for i in range(num_bins + 1)]
+        columns.hist(filtered, bins=bin_edges, edgecolor='black')
+
+        # Create the boxplot in the third subplot
+        box.boxplot(filtered)
+
+        # Set labels and title for the second subplot
+        columns.set_xlabel("SCORE")
+        columns.set_ylabel("Frequency")
+        columns.set_title("Score Distribution")
+
+        #   automatically adjust the subplots' positions and sizes
+        plt.tight_layout()
 
     plt.show()
-
 
 
 class FlappyBirdGame:
@@ -60,7 +101,7 @@ class FlappyBirdGame:
 
     def __init__(self):
         self.cur_path = str(Path(__file__).parent.resolve())
-        self.PERIOD = 0
+        self.PERIOD = PERIOD if DISPLAYING else 0
         # ######## to control the game ###############
         self.GAME_STATES = ["welcome", "main", "over"]
         self.STATE_SEQUENCE = cycle([1, 2, 0])
@@ -314,13 +355,13 @@ class FlappyBirdGame:
         self.base = Base(self.TEXTURES["base"], 0.1)
         self.agent = Q_learn(self.get_state())
 
-# control the game loop ################################################################
+    # control the game loop ################################################################
     def frames(self, t=1):
         global DISPLAYING
         if self.is_window_open:
             if self.agent.num_episodes == self.agent.last_episode + EPISODES_BEFORE_DISPLAY:
                 DISPLAYING = True
-                self.PERIOD = 7
+                self.PERIOD = PERIOD
             if DISPLAYING:
                 self.display()
             self.update_frame()
@@ -397,7 +438,7 @@ class FlappyBirdGame:
     def game_over(self):
         self.show_game_over()
 
-# #################### assistant Methods ##################################
+    # #################### assistant Methods ##################################
     # Logic ##############
     def check_crash(self):
         # Check if the bird has crashed into a pipe
@@ -457,8 +498,8 @@ class FlappyBirdGame:
         draw_rectangle_with_tex(50, 550, 420, 720, self.TEXTURES["msg"], 0.5)
         draw_rectangle_with_tex(0, SCREENWIDTH, 0, BASEY + 200, self.TEXTURES["start"], 0.2)
 
-#################################################################################
-# AI agent methods ##############################################################
+    #################################################################################
+    # AI agent methods ##############################################################
     def get_state(self):
         # Return the current state of the game
         state = {
@@ -560,13 +601,15 @@ class FlappyBirdGame:
         self.STATE_INDEX = 0
         self.counter = self.frames_per_step
 
-# keyboard handler ################################################################
+    # keyboard handler ################################################################
     def keyboard(self, key, a, b):
         if key == b"q":
-            self.agent.save_q_table()
+            if LEARNING:
+                self.agent.save_q_table()
             self.save_data(True)
             self.is_window_open = False
             glutDestroyWindow(self.window)
+
             plot()
 
 
