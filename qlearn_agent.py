@@ -2,8 +2,9 @@ import random
 import numpy as np
 import pandas as pd
 
-
-csv_file = "data.csv"
+EXPLORATION = True
+LEARNING = True
+csv_file = "learning.csv" if LEARNING else "playing.csv"
 
 # ranges of state variables
 RANGE = {
@@ -14,11 +15,11 @@ RANGE = {
 # size of buckets
 BUCKET_SIZE = [5, 50, 5]
 # num of buckets
-bucket_num = [int(i) for i in [
-    (RANGE['bird_y'][1] - RANGE['bird_y'][0]) / BUCKET_SIZE[0],
-    (RANGE['gap_x'][1] - RANGE['gap_x'][0]) / BUCKET_SIZE[1],
-    (RANGE['gap_y'][1] - RANGE['gap_y'][0]) / BUCKET_SIZE[2]
-                                ]]
+bucket_num = [
+    (RANGE['bird_y'][1] - RANGE['bird_y'][0]) // BUCKET_SIZE[0],
+    (RANGE['gap_x'][1] - RANGE['gap_x'][0]) // BUCKET_SIZE[1],
+    (RANGE['gap_y'][1] - RANGE['gap_y'][0]) // BUCKET_SIZE[2]
+                                ]
 
 
 def mapping(sample, start, bucket_size):
@@ -78,7 +79,7 @@ class Q_learn:
 
         # Set hyper parameters
         self.alpha = 0.1
-        self.gamma = 0.5
+        self.gamma = 0.9
         try:
             data = pd.read_csv(csv_file)
             self.num_episodes = data["episode"].max()

@@ -6,24 +6,52 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-EXPLORATION = True
-LEARNING = True
 DISPLAYING = False
 EPISODES_BEFORE_DISPLAY = 2000
 
 
 def plot():
     data = pd.read_csv(csv_file)
+
     episode_data = data["episode"].to_list()
     score_data = data["score"].to_list()
-    plt.scatter(episode_data, score_data)
+
+    # Create lists to store the colors for each point and count the color occurrences
+    colors = []
+    color_counts = {'Red': 0, 'Blue': 0, 'Green': 0}
+
+    # Assign colors based on score range
+    for score in score_data:
+        if score < 50:
+            colors.append('red')
+            color_counts['Red'] += 1
+        elif score < 100:
+            colors.append('blue')
+            color_counts['Blue'] += 1
+        else:
+            colors.append('green')
+            color_counts['Green'] += 1
+
+    # Plot the scatter plot with colored points
+    plt.scatter(episode_data, score_data, c=colors)
+
+    # Set labels and title
     plt.xlabel("Number of Episodes")
     plt.ylabel("SCORE")
     plt.title("Flappy Bird")
+
+    # Create legend with color counts
+    legend_labels = ['Red (<50) - Count: {}'.format(color_counts['Red']),
+                     'Blue (50-100) - Count: {}'.format(color_counts['Blue']),
+                     'Green (>100) - Count: {}'.format(color_counts['Green'])]
+
+    legend_handles = [plt.Line2D([], [], marker='o', markersize=10, color=c, linestyle='None') for c in
+                      ['red', 'blue', 'green']]
+
+    plt.legend(legend_handles, legend_labels, fontsize=8)
+
     plt.show()
-    # TODO: print the accuracy
-    # accuracy = ...
-    # print(accuracy)
+
 
 
 class FlappyBirdGame:
@@ -71,7 +99,7 @@ class FlappyBirdGame:
             self.cur_path + '/assets/sprites/mid.png',
             self.cur_path + '/assets/sprites/down.png')
         ##################################################
-        self.frames_per_step = 10  # number of frames after it the agent will take a decision
+        self.frames_per_step = 5  # number of frames after it the agent will take a decision
         self.counter = self.frames_per_step  # counter down to accumulate the number of frames
         self.agent = None
         self.next_pipe = None  # the pipe that the bird should focus on
