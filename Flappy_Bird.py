@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 DISPLAYING = True
-EPISODES_BEFORE_DISPLAY = 1
-PERIOD = 1
+EPISODES_BEFORE_DISPLAY = 3000
+PERIOD = 5
 
 
 def plot():
