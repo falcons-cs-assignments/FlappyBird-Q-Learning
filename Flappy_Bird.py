@@ -5,9 +5,9 @@ from qlearn_agent import *
 import matplotlib.pyplot as plt
 import pandas as pd
 
-DISPLAYING = True
-EPISODES_BEFORE_DISPLAY = 1
-PERIOD = 1
+DISPLAYING = False
+EPISODES_BEFORE_DISPLAY = 3000
+PERIOD = 5
 
 
 def plot():
